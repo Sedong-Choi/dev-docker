@@ -1,5 +1,21 @@
 # README
 
+## Requirement
+
+macOS
+- brew
+  ```bash
+  # install brew
+  $ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  ```
+  - coreutils
+    
+    ```bash
+    # to use gshuf at ./utils.sh
+    # create random container name
+    $ brew install coreutils
+    ```
+
 ## Quick start
 
 ```bash
@@ -8,13 +24,16 @@ $ git clone https://github.com/Sedong-Choi/dev-docker.git
 $ bash run.sh
 
 ```
-### run.sh
+### build.sh
 
-[build.sh](./build.sh)를 실행시키며 간단하게 docker Repository 및 Tag 설정을 할 수 있습니다.(상호작용 부분 보완필요)
+[build.sh](./build.sh)를 실행시키며 간단하게 docker Repository 및 Tag 설정을 할 수 있습니다.
 
 만약 빌드가 실패하면 script는 중단됩니다.
+### run.sh
 
-[run.sh](./run.sh) build가 완료된 이미지를 선택하여 docker를 실행 할 수 있습니다.(상호작용 부분 보완필요)
+
+
+[run.sh](./run.sh) build가 완료된 이미지를 선택하여 docker를 실행 할 수 있습니다.
 
 ### addUser.sh (개발 필요)
 
@@ -122,5 +141,10 @@ zsh plugins
 [Setting for oh-my-zsh](https://github.com/Sedong-Choi/dev-docker/blob/main/Dockerfile#L62) - oh-my-zsh 설치 및 plugin 설정하는 단계입니다.
 
 
+
+## TODO
+
+현재는 bash를 이용하여 이미지 build 및 container 실행을 하였지만 
+CRA처럼 Node.js 환경에서 실행할 수 있는 환경으로 업데이트 목표
 
 
