@@ -1,77 +1,72 @@
 # Ubuntu 20.04 LTS를 기반 이미지로 사용
 FROM ubuntu:20.04
 
-# 비대화면(frontend) 환경에서 apt-get을 사용할 때 오류가 나지 않도록 설정
-ENV DEBIAN_FRONTEND=noninteractive
-
 # 기본 패키지 설치 및 업데이트
 RUN apt-get update && apt-get install -y \
     curl \
+    wget \
     git \
-    ca-certificates \
-    build-essential \
     zsh \
     vim \
-    wget \
     unzip \
-    fonts-powerline \
+    sudo \
+    language-pack-en \
+    fontconfig \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# To Fix this error : '(anon):12: character not in range'
+RUN update-locale
 
-# oh-my-zsh install
-RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+# d2coding font 다운로드 및 설치
+RUN curl -LJO https://github.com/naver/d2codingfont/releases/download/VER1.3.2/D2Coding-Ver1.3.2-20180524.zip \
+    && mkdir -p /usr/share/fonts/truetype/d2coding \
+    && unzip D2Coding-Ver1.3.2-20180524.zip -d /usr/share/fonts/truetype/d2coding \
+    && rm -rf D2Coding-Ver1.3.2-20180524.zip \
+    && fc-cache -fv
+
+# nvm, Node.js, pnpm 설치
+ENV NVM_DIR /usr/local/nvm
+ENV NODE_VERSION 20.15.0
+RUN mkdir $NVM_DIR \
+    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash \
+    && . "$NVM_DIR/nvm.sh" \
+    && nvm install $NODE_VERSION \
+    && nvm alias default $NODE_VERSION \
+    && nvm use default \
+    && npm install -g pnpm@9.1.0
+
+
+
+# 개발자 유저 및 그룹 생성
+# developers 그룹 생성
+RUN groupadd -g 999 developers
+
+# 공통 개발자 유저 생성
+# -r: 시스템 계정 생성
+# -u: UID 지정
+# -g: 그룹 지정
+RUN useradd -r -u 999 -g developers -m -d /home/developers developers
+
+# developers group 에 sudo 권한 부여
+RUN echo '%developers ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+
+# 개발 환경 디렉토리 생성 및 설정
+RUN mkdir -p /developers/workspace && chown -R developers:developers /developers/workspace
+WORKDIR /developers/workspace
+
+# developers 사용자로 전환
+USER developers
 
 # zsh theme 설정
 ENV ZSH_THEME agnoster
 
-# zsh theme setting
-RUN sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="$ZSH_THEME"/g' ~/.zshrc
-
-# zsh 색상 설정
-RUN echo 'export TERM=xterm-256color' >> ~/.zshrc
-
-# zsh 한글 설정
-RUN echo 'export LANG=ko_KR.UTF-8' >> ~/.zshrc
-
-# zsh 플러그인 설정
-# zsh-syntax-highlighting 설치
-RUN git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
-
-# zsh-autosuggestions 설치
-RUN git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-
-# autojump 설치
-# 
-# RUN git clone git://github.com/wting/autojump.git
-# RUN cd autojump \
-#     && ./install.py \
-#     && cd .. \
-#     && rm -rf autojump
-
-
-# zsh-completions 설치
-RUN git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-completions
-
-# 플러그인 활성화
-RUN sed -i 's/plugins=(git)/plugins=(git zsh-syntax-highlighting zsh-autosuggestions zsh-completions)/g' ~/.zshrc
-
-# zshrc 재소스
-RUN echo 'source ~/.zshrc' >> ~/.zsh
-
-# nvm 설치
-ENV NVM_DIR /usr/local/nvm
-ENV NODE_VERSION 20.15.0
-RUN mkdir $NVM_DIR
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | zsh \
-    && . "$NVM_DIR/nvm.sh" \
-    && nvm install $NODE_VERSION \
-    && nvm alias default $NODE_VERSION \
-    && nvm use default
-
-# nvm 환경 변수 설정
-ENV NODE_PATH $NVM_DIR/versions/node/v$NODE_VERSION/lib/node_modules
-ENV PATH      $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
-# ------ package manager ------
-# pnpm 설치
-RUN npm install -g pnpm@9.1.0
+# oh-my-zsh, zsh 플러그인 설치 및 설정
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" \
+    && git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting \
+    && git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions \
+    && git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-completions \
+    # theme 변경
+    && sed -i "s/ZSH_THEME=\"robbyrussell\"/ZSH_THEME=\"$ZSH_THEME\"/g" ~/.zshrc \  
+    && sed -i 's/plugins=(git)/plugins=(git zsh-syntax-highlighting zsh-autosuggestions zsh-completions)/g' ~/.zshrc \
+    && echo 'export NVM_DIR="/usr/local/nvm"\n[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm\n[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion' >> ~/.zshrc
