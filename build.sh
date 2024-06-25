@@ -1,18 +1,21 @@
 #!/bin/bash
 
+# utils.sh 파일을 source 명령어로 실행
+source ./utils.sh
+
 # 마지막에 build시 사용된 command를 저장할 변수
 command="docker buildx build"
 
 
 # repository 추출
-repositories=$(docker images | awk '{print $1}' | grep -v 'REPOSITORY' | sort | uniq)
+repositories=$(get_repositories)
 
 # repository가 없는 경우
 if [ -z "$repositories" ]; then
     echo "No existing repositories."
     echo "Create a new repository."
 else
-    echo "Existing Repository"
+    echo "Existing Repositories"
     echo "-------------"
     # repository가 있는 경우
     # 한 줄씩 출력
@@ -34,7 +37,7 @@ else
 fi
 
 # tags 추출
-tags=$(docker images | grep $repo | awk '{print $2}' | grep -v 'TAG' | sort | uniq)
+tags=$(get_tags)
 
 # tags가 있는 경우
 if [ -n "$tags" ]; then
@@ -89,8 +92,21 @@ else
 fi
 
 # build 전에 동일한 tag가 있는지 확인
-if [ -n "$(docker images | grep $repo | grep $tag)" ]; then
+# 조건을 exists_image 함수로 분리
+# 이미지가 있는 경우 0을 리턴
+# 이미지가 없는 경우 1을 리턴
+if [ "$(exists_image $repo $tag)" == "0" ]; then
     echo "Tag $tag already exists. Overwrite? (y/n)"
+    read overwrite
+    if [ "$overwrite" != "y" ]; then
+        echo "Exiting."
+        echo "Skipping build."
+        exit 1
+    fi
+fi
+
+if [ -n "$(docker images | grep $repo | grep $tag)" ]; then
+    echo "$repo:$tag already exists. Overwrite? (y/n)"
     read overwrite
     if [ "$overwrite" != "y" ]; then
         echo "Exiting."
